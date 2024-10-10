@@ -1,31 +1,23 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Reflection;
-using System.Net.NetworkInformation;
 using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace ProcessDemo
 {
     public partial class Form1 : Form
     {
-        Process _process;
         public Form1()
         {
             InitializeComponent();
         }
+
         private bool IsProgramRunning(string programName)
         {
             // Проверяем, запущена ли программа
             return Process.GetProcessesByName(programName).Length > 0;
         }
-        private void RunProcess(string _path)
+
+        private void RunProcess()
         {
             string program = GetSelectedProgram();
 
@@ -43,7 +35,6 @@ namespace ProcessDemo
                     {
                         return; // Выходим из метода, если пользователь выбрал "Нет"
                     }
-                    
                 }
 
                 LaunchProgram(program);
@@ -53,6 +44,7 @@ namespace ProcessDemo
                 MessageBox.Show("Пожалуйста, выберите программу для запуска.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
         private string GetSelectedProgram()
         {
             if (rbtnCalc.Checked)
@@ -60,37 +52,71 @@ namespace ProcessDemo
             else if (rbtnCmd.Checked)
                 return "cmd"; // Запуск командной строки
             else if (rbtnBrowser.Checked)
-                return "http:\\ya.ru"; // Запуск браузера
+                return "chrome"; // Запуск браузера
             else if (rbtnWord.Checked)
                 return "winword"; // Запуск ворда
             else if (rbtnNotepad.Checked)
                 return "notepad++"; // Запуск Notepad++
             return string.Empty; // Ничего не выбрано
         }
+
         private void LaunchProgram(string program)
-        {            
+        {
             try
             {
-                _process = Process.Start(program);
+                if (Uri.IsWellFormedUriString(program, UriKind.Absolute))
+                {
+                    // Открываем URL в браузере
+                    Process.Start(new ProcessStartInfo(program) { UseShellExecute = true });
+                }
+                else
+                {
+                    // Запускаем приложение
+                    Process.Start(program);
+                }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Не удалось запустить программу: {ex.Message}");
             }
         }
+
         private void btnRun_Click(object sender, EventArgs e)
         {
-            RunProcess(GetSelectedProgram());
+            RunProcess();
         }
+
         private void CloseCurrentProcess()
         {
             string openProgram = GetSelectedProgram();
             if (!string.IsNullOrEmpty(openProgram))
             {
-                if (IsProgramRunning(openProgram))
+                if(GetSelectedProgram() == "calc")
                 {
-                    _process.Kill(); // Завершаем процесс
-                    _process = null; // Обнуляем ссылку                
+                    ProcessStartInfo processInfo = new ProcessStartInfo("taskkill", "/IM ApplicationFrameHost.exe /F");
+                    processInfo.CreateNoWindow = true; // Не показывать окно командной строки
+                    processInfo.UseShellExecute = false; // Использовать ShellExecute = false для работы в фоновом режиме
+                    Process process = Process.Start(processInfo);
+                    process.WaitForExit(); // Ждем завершения процесса taskkill
+                }
+                foreach (var process in Process.GetProcessesByName(openProgram))
+                {
+                    try
+                    {
+                        // Пытаемся отправить сигнал для закрытия окна
+                        process.CloseMainWindow();
+
+                        // Ждем, пока процесс закроется
+                        if (!process.WaitForExit(1000)) // Ждем 1 секунду
+                        {
+                            // Если процесс все еще работает, принудительно закрываем его
+                            process.Kill();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Не удалось закрыть программу: {ex.Message}");
+                    }
                 }
             }
             else
@@ -98,6 +124,8 @@ namespace ProcessDemo
                 MessageBox.Show("Нет запущенных приложений для закрытия.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
+
+
         private void btnStop_Click(object sender, EventArgs e)
         {
             CloseCurrentProcess();
@@ -105,7 +133,12 @@ namespace ProcessDemo
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            this.Text = DateTime.Now.ToString("HH:MM");
+            this.Text = DateTime.Now.ToString("HH:mm"); // Исправленный формат времени
+        }
+
+        private void pictureBoxWord_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
