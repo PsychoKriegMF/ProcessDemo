@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.Net.NetworkInformation;
+using System.Text;
 using System.Windows.Forms;
+using System.Net.NetworkInformation;
 
 namespace ProcessDemo
 {
@@ -136,9 +140,46 @@ namespace ProcessDemo
             this.Text = DateTime.Now.ToString("HH:mm"); // Исправленный формат времени
         }
 
-        private void pictureBoxWord_Click(object sender, EventArgs e)
+        private void LaunchPing(string args)
         {
+            try
+            {
+                // Разбиваем аргументы на части
+                string[] splitArgs = args.Split(' ');
+                string ipAddress = splitArgs[0]; // Предполагаем, что первый аргумент - это IP-адрес или домен
 
+                using (Ping ping = new Ping())
+                {
+                    PingReply reply = ping.Send(ipAddress);
+                    if (reply.Status == IPStatus.Success)
+                    {
+                        MessageBox.Show($"Ресурс {ipAddress} доступен.", "Результат пинга", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Ресурс {ipAddress} недоступен. Статус: {reply.Status}", "Результат пинга", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при выполнении пинга: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void btnPing_Click(object sender, EventArgs e)
+        {       
+            string resource = tbInput.Text; // Получаем введённое значение
+                if (!string.IsNullOrWhiteSpace(resource))
+                {
+                    string _CommandArgs = $"{resource} -n 10 -l 1024";
+                    LaunchPing(_CommandArgs);
+                }
+                else
+                {
+                    MessageBox.Show("Вы не ввели ресурс.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }            
+           
         }
     }
 }
